@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromRequest } from "@/lib/auth";
+import { getTokenFromRequest } from "@/lib/auth-edge";
 
 const LOGIN_PATH = "/login";
 
