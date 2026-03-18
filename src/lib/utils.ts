@@ -10,6 +10,7 @@ export function slugify(text: string): string {
 export function formatPrice(
   amount: number,
   symbol: string = "₹",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _currency?: string
 ): string {
   return `${symbol}${amount.toLocaleString("en-IN", {

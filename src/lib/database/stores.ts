@@ -10,6 +10,7 @@ export async function getAllStores(): Promise<Store[]> {
   
   // Filter for admin users and map to store-like structure
   return Object.entries(data)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .filter(([_unused, user]: [string, any]) => user.role === "ADMIN" || user.role === "admin")
     .map(([id, user]: [string, any]) => {
       return {
