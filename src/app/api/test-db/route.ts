@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { getAdminDB } from "@/lib/firebaseAdmin"
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const db = getAdminDB()
 

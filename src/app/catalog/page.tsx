@@ -2,6 +2,8 @@ import { Metadata } from "next";
 import CatalogPageContent from "./CatalogPageContent";
 import OnboardingModal from "@/components/OnboardingModal";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Catalog",
   description: "Browse our product catalog",
