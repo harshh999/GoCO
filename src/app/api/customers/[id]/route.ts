@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const { id } = await params;
     const body = await req.json();
-    const { name, phone, email, businessName, address, city, notes, totalPurchases, lastPurchaseDate } = body;
+    const { name, phone, email, businessName, address, city, notes, totalPurchases } = body;
 
     const storeId = user.role === "ADMIN" ? user.id : undefined;
     

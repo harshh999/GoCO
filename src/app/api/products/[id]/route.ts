@@ -16,7 +16,7 @@ export async function GET(
     // Try to get by product ID directly - we need storeId for RTDB
     // For now, search through all products
     const allProducts = await productsModule.getAllProducts();
-    let product = allProducts.find(p => p.id === id || p.slug === id) || null;
+    const product = allProducts.find(p => p.id === id || p.slug === id) || null;
 
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });

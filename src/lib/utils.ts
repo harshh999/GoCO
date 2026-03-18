@@ -10,7 +10,7 @@ export function slugify(text: string): string {
 export function formatPrice(
   amount: number,
   symbol: string = "₹",
-  _currency: string = "INR"
+  _currency?: string
 ): string {
   return `${symbol}${amount.toLocaleString("en-IN", {
     minimumFractionDigits: 2,

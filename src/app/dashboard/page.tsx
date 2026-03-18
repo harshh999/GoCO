@@ -104,7 +104,7 @@ export default async function DashboardPage() {
           Welcome back, {session?.name?.split(" ")[0]} 👋
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Here's an overview of your store
+          Here&apos;s an overview of your store
         </p>
       </div>
 

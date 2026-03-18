@@ -15,7 +15,7 @@ export async function GET(
     
     // Get all categories and find by id or slug
     const allCategories = await categoriesModule.getAllCategories();
-    let category = allCategories.find(c => c.id === id || c.slug === id);
+    const category = allCategories.find(c => c.id === id || c.slug === id);
     
     if (!category) {
       return NextResponse.json(

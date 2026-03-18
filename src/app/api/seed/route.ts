@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { getAllUsers, createUser } from "@/lib/database/users";
 import { createCategory, getCategoriesByStore } from "@/lib/database/categories";
 import { createProduct, getProductsByStore } from "@/lib/database/products";
-import { updateStoreSettings, createStoreSettings } from "@/lib/database/storeSettings";
+import { createStoreSettings } from "@/lib/database/storeSettings";
 
 // POST /api/seed — one-time database seeder
 // Only works if no users exist (prevents re-seeding)
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Create Categories under admin's store
-    const categoryIds = await Promise.all([
+    await Promise.all([
       createCategory(adminId, { name: "Electronics", slug: "electronics", description: "Tech gadgets and devices" }),
       createCategory(adminId, { name: "Clothing", slug: "clothing", description: "Fashion and apparel" }),
       createCategory(adminId, { name: "Accessories", slug: "accessories", description: "Bags, belts, and more" }),

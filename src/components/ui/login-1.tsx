@@ -321,7 +321,7 @@ export default function Login1() {
                   )}
                 </button>
                 <p className="text-center text-sm text-gray-500">
-                  We'll redirect you to Google for authentication
+                  We&apos;ll redirect you to Google for authentication
                 </p>
               </div>
             )}
@@ -398,7 +398,7 @@ export default function Login1() {
           {/* Footer */}
           <div className="px-8 py-6 bg-gray-50 border-t border-gray-100">
             <p className="text-center text-sm text-gray-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <a href="/register" className="text-violet-600 font-semibold hover:text-violet-700">
                 Sign up
               </a>
