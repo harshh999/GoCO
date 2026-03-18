@@ -1,11 +1,11 @@
 import { ReactNode } from "react";
 import Link from "next/link";
-import { storeSettings } from "@/lib/firestore";
+import { getStoreSettings } from "@/lib/database/storeSettings";
 import { ToastProvider } from "@/components/ui/Toast";
 import LogoutButton from "@/components/ui/LogoutButton";
 
 export default async function CatalogLayout({ children }: { children: ReactNode }) {
-  const settings = await storeSettings.getStoreSettings();
+  const settings = await getStoreSettings();
   const storeName = settings?.storeName ?? "GoRetail";
   const tagline = settings?.storeTagline ?? "Discover Our Collection";
 

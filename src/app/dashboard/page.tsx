@@ -1,51 +1,57 @@
 import { Metadata } from "next";
 import { getSession } from "@/lib/auth";
-import { getAdminFirestore } from "@/lib/firestoreAdmin";
+import { getProductsByStore } from "@/lib/database/products";
+import { getCategoriesByStore } from "@/lib/database/categories";
+import { getCustomersByStore } from "@/lib/database/customers";
+import { getRequestsByStore } from "@/lib/database/requests";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
-// Helper to safely get collection data, returning empty array on error
-async function safeGetCollection(
-  collectionName: string,
-  queryFn?: (ref: any) => any
-): Promise<{ size: number; empty: boolean }> {
-  try {
-    const db = getAdminFirestore();
-    let ref = db.collection(collectionName);
-    if (queryFn) {
-      ref = queryFn(ref);
-    }
-    const snap = await ref.get();
-    return { size: snap.size, empty: snap.empty };
-  } catch (error: any) {
-    // Handle NOT_FOUND (code 5) - collection doesn't exist yet
-    if (error?.code === 5 || (error?.message && error.message.includes('NOT_FOUND'))) {
-      console.log(`[safeGetCollection] Collection '${collectionName}' not found, returning empty`);
-      return { size: 0, empty: true };
-    }
-    // For other errors, log and return empty
-    console.error(`[safeGetCollection] Error fetching '${collectionName}':`, error);
-    return { size: 0, empty: true };
-  }
-}
-
-async function getStats() {
-  const [productsSnap, categoriesSnap, inStockSnap, featuredSnap] = await Promise.all([
-    safeGetCollection('products'),
-    safeGetCollection('categories'),
-    safeGetCollection('products', (ref) => ref.where('inStock', '==', true)),
-    safeGetCollection('products', (ref) => ref.where('featured', '==', true)),
-  ]);
+async function getStats(storeId: string) {
+  // Get products for this store
+  const storeProducts = await getProductsByStore(storeId);
+  
+  // Get categories for this store
+  const storeCategories = await getCategoriesByStore(storeId);
+  
+  // Get customers for this store
+  const storeCustomers = await getCustomersByStore(storeId);
+  
+  // Get requests for this store
+  const storeRequests = await getRequestsByStore(storeId);
+  
+  const inStockCount = storeProducts.filter(p => p.inStock !== false).length;
+  const featuredCount = storeProducts.filter(p => p.featured === true).length;
+  
   return { 
-    products: productsSnap.size, 
-    categories: categoriesSnap.size, 
-    inStockProducts: inStockSnap.size, 
-    featuredProducts: featuredSnap.size 
+    products: storeProducts.length, 
+    categories: storeCategories.length, 
+    customers: storeCustomers.length,
+    requests: storeRequests.length,
+    inStockProducts: inStockCount, 
+    featuredProducts: featuredCount 
   };
 }
 
 export default async function DashboardPage() {
-  const [session, stats] = await Promise.all([getSession(), getStats()]);
+  const session = await getSession();
+  
+  // Redirect if not logged in or not admin
+  if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
+    // For now, just show empty stats - in production would redirect
+  }
+  
+  // Use session id as storeId for admin users
+  const storeId = session?.id;
+  
+  const stats = storeId ? await getStats(storeId) : {
+    products: 0,
+    categories: 0,
+    customers: 0,
+    requests: 0,
+    inStockProducts: 0,
+    featuredProducts: 0
+  };
 
   const statCards = [
     {
@@ -69,21 +75,21 @@ export default async function DashboardPage() {
       color: "bg-purple-50 text-purple-600",
     },
     {
-      label: "In Stock",
-      value: stats.inStockProducts,
+      label: "Customers",
+      value: stats.customers,
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
       color: "bg-emerald-50 text-emerald-600",
     },
     {
-      label: "Featured",
-      value: stats.featuredProducts,
+      label: "Requests",
+      value: stats.requests,
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
       ),
       color: "bg-amber-50 text-amber-600",

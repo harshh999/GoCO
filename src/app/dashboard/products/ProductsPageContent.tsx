@@ -16,9 +16,33 @@ export default function ProductsPageContent() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [storeId, setStoreId] = useState<string | undefined>();
   const [formModal, setFormModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; product?: Product }>({ open: false });
   const [deleting, setDeleting] = useState(false);
+
+  // Fetch current user to get storeId
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        console.log("User data:", data); // Debug log
+        if (data.success) {
+          // Try different possible field names
+          const userStoreId = data.data?.storeId || data.data?.store_id;
+          if (userStoreId) {
+            setStoreId(userStoreId);
+          } else {
+            console.log("No storeId found in user data. Available fields:", Object.keys(data.data || {}));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    }
+    fetchUser();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -201,6 +225,7 @@ export default function ProductsPageContent() {
         <ProductForm
           product={formModal.product}
           categories={categories}
+          storeId={storeId}
           onSuccess={() => {
             setFormModal({ open: false });
             fetchData();

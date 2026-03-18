@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
-import { users } from "@/lib/firestore";
+import { getUser } from "@/lib/database/users";
 
 export async function GET(req: NextRequest) {
   const payload = await getTokenFromRequest(req);
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const user = await users.getUserById(payload.id)
+  const user = await getUser(payload.id)
 
   if (!user) {
     return NextResponse.json(

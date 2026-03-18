@@ -18,12 +18,12 @@ export interface Category {
 }
 
 export interface ProductImage {
-  id: string;
+  id?: string;
   url: string;
   alt?: string | null;
-  isPrimary: boolean;
-  order: number;
-  productId: string;
+  isPrimary?: boolean;
+  order?: number;
+  productId?: string | null;
 }
 
 export interface Product {

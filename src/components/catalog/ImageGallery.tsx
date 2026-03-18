@@ -11,7 +11,10 @@ interface ImageGalleryProps {
 
 export default function ImageGallery({ images, productName }: ImageGalleryProps) {
   const sorted = [...images].sort(
-    (a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.order - b.order
+    (a, b) =>
+      Number(b.isPrimary ?? false) -
+      Number(a.isPrimary ?? false) ||
+      (a.order ?? 0) - (b.order ?? 0)
   );
   const [selected, setSelected] = useState(0);
 

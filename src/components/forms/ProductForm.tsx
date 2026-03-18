@@ -18,6 +18,7 @@ interface UploadedImage {
 interface ProductFormProps {
   product?: Product;
   categories: Category[];
+  storeId?: string;
   onSuccess: (product: Product) => void;
   onCancel: () => void;
 }
@@ -25,17 +26,18 @@ interface ProductFormProps {
 export default function ProductForm({
   product,
   categories,
+  storeId,
   onSuccess,
   onCancel,
 }: ProductFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<UploadedImage[]>(
-    product?.images?.map((img) => ({
+    product?.images?.map((img, index) => ({
       url: img.url,
       alt: img.alt ?? undefined,
-      isPrimary: img.isPrimary,
-      order: img.order,
+      isPrimary: img.isPrimary ?? index === 0,
+      order: img.order ?? index
     })) ?? []
   );
 
@@ -75,6 +77,7 @@ export default function ProductForm({
     try {
       const payload = {
         ...form,
+        storeId,
         price: parseFloat(form.price),
         comparePrice: form.comparePrice ? parseFloat(form.comparePrice) : null,
         categoryId: form.categoryId || null,

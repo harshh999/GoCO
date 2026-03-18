@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { users } from "@/lib/firestore";
+import { getUser } from "@/lib/database/users";
 import StoreCatalogContent from "./StoreCatalogContent";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { storeId } = await params;
-  const store = await users.getUserById(storeId)
+  const store = await getUser(storeId)
   if (store && store.role !== 'ADMIN') {
     return { title: 'Store Not Found' }
   }
@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StoreCatalogPage({ params }: Props) {
   const { storeId } = await params;
 
-  const store = await users.getUserById(storeId)
+  const store = await getUser(storeId)
   if (!store || store.role !== 'ADMIN') notFound();
 
   return <StoreCatalogContent storeId={storeId} />;

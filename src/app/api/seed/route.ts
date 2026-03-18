@@ -2,8 +2,10 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminFirestore } from "@/lib/firestoreAdmin";
-import { users, categories, products, storeSettings } from "@/lib/firestore";
+import { getAllUsers, createUser } from "@/lib/database/users";
+import { createCategory, getCategoriesByStore } from "@/lib/database/categories";
+import { createProduct, getProductsByStore } from "@/lib/database/products";
+import { updateStoreSettings, createStoreSettings } from "@/lib/database/storeSettings";
 
 // POST /api/seed — one-time database seeder
 // Only works if no users exist (prevents re-seeding)
@@ -16,9 +18,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid seed secret" }, { status: 401 });
     }
 
-    const db = getAdminFirestore()
-    const existingUsersSnap = await db.collection('users').limit(1).get()
-    if (!existingUsersSnap.empty) {
+    // Check if already seeded
+    const existingUsers = await getAllUsers();
+    if (existingUsers.length > 0) {
       return NextResponse.json(
         { success: false, error: "Database already seeded" },
         { status: 400 }
@@ -27,32 +29,39 @@ export async function POST(req: NextRequest) {
 
     // Create SuperAdmin
     const superAdminPassword = await bcrypt.hash("superadmin123", 12);
-    const superAdmin = await users.createUser({
+    const superAdminId = "superadmin-" + Date.now();
+    await createUser(superAdminId, {
       email: "superadmin@goretail.com",
-      password: superAdminPassword,
+      passwordHash: superAdminPassword,
       name: "Super Admin",
       role: "SUPER_ADMIN",
+      storeId: null,
     });
 
-    // Create Admin
+    // Create Admin (store owner)
     const adminPassword = await bcrypt.hash("admin123", 12);
-    const admin = await users.createUser({
+    const adminId = "admin-" + Date.now();
+    await createUser(adminId, {
       email: "admin@goretail.com",
-      password: adminPassword,
+      passwordHash: adminPassword,
       name: "Store Owner",
       role: "ADMIN",
+      storeId: adminId,
     });
 
-    // Create Categories
-    const categories = await Promise.all([
-      categories.createCategory({ name: "Electronics", slug: "electronics", description: "Tech gadgets and devices" }),
-      categories.createCategory({ name: "Clothing", slug: "clothing", description: "Fashion and apparel" }),
-      categories.createCategory({ name: "Accessories", slug: "accessories", description: "Bags, belts, and more" }),
-      categories.createCategory({ name: "Home & Living", slug: "home-living", description: "Furniture and home essentials" }),
+    // Create Categories under admin's store
+    const categoryIds = await Promise.all([
+      createCategory(adminId, { name: "Electronics", slug: "electronics", description: "Tech gadgets and devices" }),
+      createCategory(adminId, { name: "Clothing", slug: "clothing", description: "Fashion and apparel" }),
+      createCategory(adminId, { name: "Accessories", slug: "accessories", description: "Bags, belts, and more" }),
+      createCategory(adminId, { name: "Home & Living", slug: "home-living", description: "Furniture and home essentials" }),
     ]);
 
+    // Get the created categories
+    const createdCategories = await getCategoriesByStore(adminId);
+
     // Create Store Settings
-    await storeSettings.updateStoreSettings({
+    await createStoreSettings(adminId, {
       storeName: "GoRetail Store",
       storeTagline: "Discover Our Collection",
       currency: "USD",
@@ -70,7 +79,7 @@ export async function POST(req: NextRequest) {
         price: 299.99,
         comparePrice: 399.99,
         sku: "ELEC-001",
-        categoryId: categories[0].id,
+        categoryId: createdCategories[0]?.id || null,
         featured: true,
         images: [{ url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800", alt: "Premium Wireless Headphones", isPrimary: true, order: 0 }],
       },
@@ -81,7 +90,7 @@ export async function POST(req: NextRequest) {
         price: 249.99,
         comparePrice: 329.99,
         sku: "ELEC-002",
-        categoryId: categories[0].id,
+        categoryId: createdCategories[0]?.id || null,
         featured: true,
         images: [{ url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800", alt: "Smart Watch", isPrimary: true, order: 0 }],
       },
@@ -92,7 +101,7 @@ export async function POST(req: NextRequest) {
         price: 120.00,
         comparePrice: 150.00,
         sku: "CLTH-001",
-        categoryId: categories[1].id,
+        categoryId: createdCategories[1]?.id || null,
         featured: true,
         images: [{ url: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800", alt: "White Sneakers", isPrimary: true, order: 0 }],
       },
@@ -102,7 +111,7 @@ export async function POST(req: NextRequest) {
         description: "Luxuriously soft merino wool sweater. Naturally temperature-regulating and odor-resistant. Perfect for any season.",
         price: 89.99,
         sku: "CLTH-002",
-        categoryId: categories[1].id,
+        categoryId: createdCategories[1]?.id || null,
         featured: false,
         images: [{ url: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800", alt: "Wool Sweater", isPrimary: true, order: 0 }],
       },
@@ -113,7 +122,7 @@ export async function POST(req: NextRequest) {
         price: 195.00,
         comparePrice: 240.00,
         sku: "ACC-001",
-        categoryId: categories[2].id,
+        categoryId: createdCategories[2]?.id || null,
         featured: true,
         images: [{ url: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800", alt: "Leather Tote", isPrimary: true, order: 0 }],
       },
@@ -123,7 +132,7 @@ export async function POST(req: NextRequest) {
         description: "Elegant adjustable desk lamp with 3 color temperatures and 5 brightness levels. USB charging port built in.",
         price: 79.99,
         sku: "HOME-001",
-        categoryId: categories[3].id,
+        categoryId: createdCategories[3]?.id || null,
         featured: false,
         images: [{ url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800", alt: "Desk Lamp", isPrimary: true, order: 0 }],
       },
@@ -131,17 +140,19 @@ export async function POST(req: NextRequest) {
 
     for (const productData of sampleProducts) {
       const { images, ...rest } = productData;
-      await products.createProduct(undefined, { ...rest, images });
+      await createProduct(adminId, { ...rest, images });
     }
+
+    const createdProducts = await getProductsByStore(adminId);
 
     return NextResponse.json({
       success: true,
       message: "Database seeded successfully",
       data: {
-        superAdmin: { email: superAdmin.email, role: superAdmin.role },
-        admin: { email: admin.email, role: admin.role },
-        categories: categories.length,
-        products: sampleProducts.length,
+        superAdmin: { email: "superadmin@goretail.com", role: "SUPER_ADMIN" },
+        admin: { email: "admin@goretail.com", role: "ADMIN" },
+        categories: createdCategories.length,
+        products: createdProducts.length,
       },
     });
   } catch (error) {

@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { users } from "@/lib/firestore";
+import { getUserByEmail } from "@/lib/database/users";
 import { signToken, createSessionCookie } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         password: "$2b$12$suOAwlqBnqeA7j3mf39qiuhS9M13eI3FLo3vp.WyFlaAvYabeQYhi", // SuperAdmin@123
         name: "System Administrator",
         role: "SUPER_ADMIN",
+        storeId: "goretail-platform",
         storeName: "GoCo Platform",
       },
       {
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
         password: "$2b$12$m3TM4FVMrGXrGXC4rbeWtOTk7OAoQiFWMV36ndsa8XDiG174E79O2", // Admin@123
         name: "Sarah Chen",
         role: "ADMIN",
+        storeId: "fresh-cafe",
         storeName: "Fresh Organic Café",
       },
       {
@@ -40,6 +42,7 @@ export async function POST(req: NextRequest) {
         password: "$2b$12$m3TM4FVMrGXrGXC4rbeWtOTk7OAoQiFWMV36ndsa8XDiG174E79O2", // Admin@123
         name: "Marcus Rodriguez",
         role: "ADMIN",
+        storeId: "urban-fashion",
         storeName: "Urban Fashion Boutique",
       },
       {
@@ -48,11 +51,12 @@ export async function POST(req: NextRequest) {
         password: "$2b$12$m3TM4FVMrGXrGXC4rbeWtOTk7OAoQiFWMV36ndsa8XDiG174E79O2", // Admin@123
         name: "Priya Sharma",
         role: "ADMIN",
+        storeId: "tech-gadgets",
         storeName: "Tech Gadgets Hub",
       }
     ];
 
-    let user = await users.getUserByEmail(email);
+    let user = await getUserByEmail(email);
     
     // If not in DB, check hardcoded users
     if (!user) {
@@ -71,7 +75,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const valid = await bcrypt.compare(password, user.password);
+    // Check password - support both password and passwordHash fields
+    const passwordToCompare = (user as any).password || (user as any).passwordHash;
+    const valid = await bcrypt.compare(password, passwordToCompare);
     if (!valid) {
       return NextResponse.json(
         { success: false, error: "Invalid credentials" },
@@ -79,7 +85,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN") {
+    if (user.role !== "SUPER_ADMIN" && user.role !== "ADMIN" && user.role !== "superadmin" && user.role !== "admin") {
       return NextResponse.json(
         { success: false, error: "Access denied" },
         { status: 403 }
@@ -91,6 +97,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role as "SUPER_ADMIN" | "ADMIN" | "GUEST",
+      storeId: (user as any).storeId ?? undefined,
       storeName: user.storeName ?? undefined,
     });
 

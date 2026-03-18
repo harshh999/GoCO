@@ -3,8 +3,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
-import { products } from "@/lib/firestore";
-import { getAdminFirestore } from "@/lib/firestoreAdmin";
+import * as productsModule from "@/lib/database/products";
 
 // GET /api/products/[id] - get single product by id or slug
 export async function GET(
@@ -13,13 +12,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    let product = await products.getProduct(id).catch(() => null);
-    if (!product) {
-      // try slug lookup
-      const db = getAdminFirestore()
-      const q = await db.collection('products').where('slug', '==', id).limit(1).get()
-      if (!q.empty) product = await products.getProduct(q.docs[0].id)
-    }
+    
+    // Try to get by product ID directly - we need storeId for RTDB
+    // For now, search through all products
+    const allProducts = await productsModule.getAllProducts();
+    let product = allProducts.find(p => p.id === id || p.slug === id) || null;
 
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
@@ -47,29 +44,21 @@ export async function PUT(
     const body = await req.json();
     const { name, description, price, comparePrice, sku, inStock, featured, categoryId, images } = body;
 
-    const existing = await products.getProduct(id);
-    if (!existing) return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    // Find the product first to get storeId
+    const allProducts = await productsModule.getAllProducts();
+    const existing = allProducts.find(p => p.id === id);
+    
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    }
 
     // slug handling
     let slug = (existing as any).slug;
     if (name && name !== existing.name) {
       const newSlug = slugify(name);
-      const db = getAdminFirestore()
-      const q = await db.collection('products').where('slug', '==', newSlug).limit(1).get()
-      const conflictingId = !q.empty ? q.docs[0].id : null
-      slug = conflictingId && conflictingId !== id ? `${newSlug}-${Date.now()}` : newSlug
-    }
-
-    // delete existing images if replacing
-    if (images !== undefined) {
-      const db = getAdminFirestore()
-      const imgsRef = db.collection('products').doc(id).collection('images')
-      const snap = await imgsRef.get()
-      if (!snap.empty) {
-        const batch = db.batch()
-        snap.docs.forEach(d => batch.delete(d.ref))
-        await batch.commit()
-      }
+      const storeProducts = await productsModule.getProductsByStore(existing.storeId!);
+      const conflicting = storeProducts.find(p => p.slug === newSlug && p.id !== id);
+      slug = conflicting ? `${newSlug}-${Date.now()}` : newSlug;
     }
 
     const updatePayload: any = {
@@ -81,18 +70,13 @@ export async function PUT(
       ...(inStock !== undefined && { inStock }),
       ...(featured !== undefined && { featured }),
       ...(categoryId !== undefined && { categoryId: categoryId || null }),
+      ...(images !== undefined && { images }),
     }
 
-    await products.updateProduct(id, updatePayload)
-    if (images !== undefined && Array.isArray(images)) {
-      for (let i = 0; i < images.length; i++) {
-        const img = images[i]
-        await products.addProductImage(id, { id: img.id, url: img.url, alt: img.alt ?? null, isPrimary: img.isPrimary ?? (i === 0), order: img.order ?? i })
-      }
-    }
+    await productsModule.updateProduct(existing.storeId!, id, updatePayload)
 
-    const product = await products.getProduct(id)
-    return NextResponse.json({ success: true, data: product })
+    const updated = await productsModule.getProduct(existing.storeId!, id)
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error("[PRODUCT PUT]", error);
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
@@ -111,7 +95,16 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    await products.deleteProduct(id)
+    
+    // Find the product first to get storeId
+    const allProducts = await productsModule.getAllProducts();
+    const existing = allProducts.find(p => p.id === id);
+    
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
+    }
+
+    await productsModule.deleteProduct(existing.storeId!, id)
     return NextResponse.json({ success: true, message: "Product deleted" });
   } catch (error) {
     console.error("[PRODUCT DELETE]", error);

@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { customers } from "@/lib/firestore";
+import { getCustomersByStore, getAllCustomers, createCustomer } from "@/lib/database/customers";
 import { getTokenFromRequest } from "@/lib/auth";
 
 // GET /api/customers - list all customers (admin only)
@@ -18,20 +18,17 @@ export async function GET(req: NextRequest) {
     const pageSize = parseInt(searchParams.get("pageSize") ?? "50");
 
     const storeId = user.role === "ADMIN" ? user.id : undefined
-    let allCustomers: any[] = []
+    let allCustomers = []
     if (storeId) {
-      allCustomers = await customers.getCustomersByStore(storeId)
+      allCustomers = await getCustomersByStore(storeId)
     } else {
-      // SUPER_ADMIN: fetch all customers (caution: could be large)
-      // fetch via admin firestore directly
-      const db = (await import('@/lib/firestoreAdmin')).then(m => m.getAdminFirestore())
-      const snap = await (await db).collection('customers').orderBy('createdAt','desc').get()
-      allCustomers = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
+      // SUPER_ADMIN: fetch all customers
+      allCustomers = await getAllCustomers()
     }
 
     // simple search filter (contains in name/phone/email/businessName)
     const filtered = search
-      ? allCustomers.filter(c => ((c.name || '') + ' ' + (c.phone || '') + ' ' + (c.email || '') + ' ' + (c.businessName || '')).toLowerCase().includes(search))
+      ? allCustomers.filter((c: any) => ((c.name || '') + ' ' + (c.phone || '') + ' ' + (c.email || '') + ' ' + (c.businessName || '')).toLowerCase().includes(search))
       : allCustomers
 
     const total = filtered.length
@@ -54,7 +51,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Name is required" }, { status: 400 });
     }
 
-    const customer = await customers.createCustomer({
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: "Store ID is required" }, { status: 400 });
+    }
+
+    const customerId = await createCustomer(storeId, {
       name,
       phone: phone ?? null,
       email: email ?? null,
@@ -62,10 +63,9 @@ export async function POST(req: NextRequest) {
       address: address ?? null,
       city: city ?? null,
       notes: notes ?? null,
-      storeId: storeId ?? null,
     });
 
-    return NextResponse.json({ success: true, data: customer }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id: customerId, storeId } }, { status: 201 });
   } catch (error) {
     console.error("[CUSTOMERS POST]", error);
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });

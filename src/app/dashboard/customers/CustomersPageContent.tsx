@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
 import { Customer } from "@/types";
+import { formatPrice } from "@/lib/utils";
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -197,7 +198,7 @@ export default function CustomersPageContent() {
                     <td className="px-5 py-4 text-gray-600">{c.phone ?? "—"}</td>
                     <td className="px-5 py-4 text-gray-600 hidden md:table-cell">{c.businessName ?? "—"}</td>
                     <td className="px-5 py-4 text-gray-600 hidden lg:table-cell">
-                      {c.totalPurchases > 0 ? `$${c.totalPurchases.toFixed(2)}` : "—"}
+                      {c.totalPurchases > 0 ? formatPrice(c.totalPurchases) : "—"}
                     </td>
                     <td className="px-5 py-4 text-gray-600 hidden lg:table-cell">
                       {formatDate(c.lastPurchaseDate)}
@@ -369,7 +370,7 @@ export default function CustomersPageContent() {
                 { label: "Email", value: viewModal.customer.email },
                 { label: "City", value: viewModal.customer.city },
                 { label: "Address", value: viewModal.customer.address },
-                { label: "Total Purchases", value: viewModal.customer.totalPurchases > 0 ? `$${viewModal.customer.totalPurchases.toFixed(2)}` : null },
+                { label: "Total Purchases", value: viewModal.customer.totalPurchases > 0 ? formatPrice(viewModal.customer.totalPurchases) : null },
                 { label: "Last Purchase", value: formatDate(viewModal.customer.lastPurchaseDate) !== "—" ? formatDate(viewModal.customer.lastPurchaseDate) : null },
                 { label: "Customer Since", value: formatDate(viewModal.customer.createdAt) },
               ].map(({ label, value }) => value ? (

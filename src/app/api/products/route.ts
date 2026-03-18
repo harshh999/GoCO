@@ -3,8 +3,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
-import { products } from "@/lib/firestore";
-import { getAdminFirestore } from "@/lib/firestoreAdmin";
+import * as productsModule from "@/lib/database/products";
+import { getAllProducts } from "@/lib/database/products";
 
 // GET /api/products - list all products (public, with optional filters)
 export async function GET(req: NextRequest) {
@@ -18,24 +18,24 @@ export async function GET(req: NextRequest) {
 
     const storeIdParam = searchParams.get("storeId") ?? undefined;
     let filterStoreId: string | undefined = storeIdParam;
+    
+    // If not provided, try to get from authenticated user
     if (!filterStoreId) {
       const user = await getTokenFromRequest(req);
       if (user && user.role === "ADMIN") filterStoreId = user.id;
     }
 
-    let allProducts: any[] = []
+    let allProducts = []
     if (filterStoreId) {
-      allProducts = await products.listProductsByStore(filterStoreId)
+      // Multi-tenant: filter by storeId
+      allProducts = await productsModule.getProductsByStore(filterStoreId)
     } else {
-      // fetch all products
-      const db = getAdminFirestore()
-      const snap = await db.collection('products').orderBy('createdAt','desc').get()
-      allProducts = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
-      // fetch images for each product lazily in mapping below when needed
+      // SuperAdmin or public: fetch all products
+      allProducts = await getAllProducts()
     }
 
     // apply search, category, featured filters
-    let filtered = allProducts.filter(p => {
+    const filtered = allProducts.filter((p: any) => {
       if (categoryId && p.categoryId !== categoryId) return false
       if (featured === 'true' && !p.featured) return false
       if (!search) return true
@@ -45,13 +45,6 @@ export async function GET(req: NextRequest) {
 
     const total = filtered.length
     const items = filtered.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize)
-
-    // attach images for returned items
-    for (let i = 0; i < items.length; i++) {
-      const prod = items[i]
-      const imgs = await products.getProductImages(prod.id)
-      prod.images = imgs
-    }
 
     return NextResponse.json({ success: true, data: { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) } })
   } catch (error) {
@@ -75,7 +68,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { name, description, price, comparePrice, sku, inStock, featured, categoryId, images } = body;
+    const { name, description, price, comparePrice, sku, inStock, featured, categoryId, images, storeId } = body;
 
     if (!name || price === undefined) {
       return NextResponse.json(
@@ -86,12 +79,23 @@ export async function POST(req: NextRequest) {
 
     // Generate unique slug
     let slug = slugify(name);
-    const db = getAdminFirestore()
-    const q = await db.collection('products').where('slug', '==', slug).limit(1).get()
-    if (!q.empty) slug = `${slug}-${Date.now()}`
+    
+    // For admin users, use their ID as storeId; for superadmin, use provided storeId
+    const productStoreId = user.role === "ADMIN" ? user.id : (storeId || null)
+    
+    if (!productStoreId) {
+      return NextResponse.json(
+        { success: false, error: "Store ID is required" },
+        { status: 400 }
+      );
+    }
 
-    const storeId = user.role === "ADMIN" ? user.id : null
-    const created = await products.createProduct(undefined, {
+    // Check if slug exists for this store
+    const existingProducts = await productsModule.getProductsByStore(productStoreId)
+    const slugExists = existingProducts.some((p: any) => p.slug === slug)
+    if (slugExists) slug = `${slug}-${Date.now()}`
+
+    const productId = await productsModule.createProduct(productStoreId, {
       name,
       slug,
       description: description ?? null,
@@ -101,11 +105,10 @@ export async function POST(req: NextRequest) {
       inStock: inStock ?? true,
       featured: featured ?? false,
       categoryId: categoryId ?? null,
-      storeId,
       images,
     })
 
-    return NextResponse.json({ success: true, data: created }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id: productId } }, { status: 201 });
   } catch (error) {
     console.error("[PRODUCTS POST]", error);
     return NextResponse.json(

@@ -3,8 +3,8 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
-import { categories } from "@/lib/firestore";
-import { products } from "@/lib/firestore";
+import * as categoriesModule from "@/lib/database/categories";
+import * as productsModule from "@/lib/database/products";
 
 export async function GET(
   _req: NextRequest,
@@ -12,15 +12,21 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    let category = await categories.getCategoryById(id);
-    if (!category) category = await categories.getCategoryBySlug(id);
+    
+    // Get all categories and find by id or slug
+    const allCategories = await categoriesModule.getAllCategories();
+    let category = allCategories.find(c => c.id === id || c.slug === id);
+    
     if (!category) {
       return NextResponse.json(
         { success: false, error: "Category not found" },
         { status: 404 }
       );
     }
-    const prods = await products.getProductsByCategory(category.id)
+    
+    const prods = await productsModule.getProductsByStore(category.storeId!)
+      .then(products => products.filter(p => p.categoryId === category!.id));
+    
     const result = { ...category, products: prods, _count: { products: prods.length } }
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
@@ -45,19 +51,30 @@ export async function PUT(
     const { id } = await params;
     const { name, description } = await req.json();
 
-    const existing = await categories.getCategoryById(id);
-    if (!existing) return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+    // Get all categories to find the existing one
+    const allCategories = await categoriesModule.getAllCategories();
+    const existing = allCategories.find(c => c.id === id);
+    
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
+    }
 
     let slug = (existing as any).slug;
     if (name && name !== existing.name) {
       const newSlug = slugify(name);
-      const conflict = await categories.getCategoryBySlug(newSlug);
-      slug = conflict && conflict.id !== id ? `${newSlug}-${Date.now()}` : newSlug;
+      const conflict = allCategories.find(c => c.slug === newSlug && c.id !== id);
+      slug = conflict ? `${newSlug}-${Date.now()}` : newSlug;
     }
 
-    const updated = await categories.updateCategory(id, { ...(name !== undefined && { name, slug }), ...(description !== undefined && { description }) });
-    const prods = await products.getProductsByCategory(id);
-    return NextResponse.json({ success: true, data: { ...updated, _count: { products: prods.length } } });
+    await categoriesModule.updateCategory(existing.storeId!, id, { 
+      ...(name !== undefined && { name, slug }), 
+      ...(description !== undefined && { description }) 
+    });
+    
+    const prods = await productsModule.getProductsByStore(existing.storeId!)
+      .then(products => products.filter(p => p.categoryId === id));
+    
+    return NextResponse.json({ success: true, data: { ...existing, _count: { products: prods.length } } });
   } catch (error) {
     console.error("[CATEGORY PUT]", error);
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
@@ -75,12 +92,24 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    // Unassign products before deleting
-    const prods = await products.getProductsByCategory(id);
-    for (const p of prods) {
-      await products.updateProduct((p as any).id, { categoryId: null });
+    
+    // Get all categories to find the existing one
+    const allCategories = await categoriesModule.getAllCategories();
+    const existing = allCategories.find(c => c.id === id);
+    
+    if (!existing) {
+      return NextResponse.json({ success: false, error: "Not found" }, { status: 404 });
     }
-    await categories.deleteCategory(id);
+
+    // Unassign products before deleting
+    const prods = await productsModule.getProductsByStore(existing.storeId!)
+      .then(products => products.filter(p => p.categoryId === id));
+    
+    for (const p of prods) {
+      await productsModule.updateProduct(existing.storeId!, p.id, { categoryId: null });
+    }
+    
+    await categoriesModule.deleteCategory(existing.storeId!, id);
     return NextResponse.json({ success: true, message: "Category deleted" });
   } catch (error) {
     console.error("[CATEGORY DELETE]", error);

@@ -1,31 +1,25 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { users, products, customers } from "@/lib/firestore";
-import getAdminFirestore from "@/lib/firestoreAdmin";
+import { getAllUsers } from "@/lib/database/users";
+import { getProductsByStore } from "@/lib/database/products";
+import { getCustomersByStore } from "@/lib/database/customers";
 
 // GET /api/stores - public list of all store admins with their metadata
 export async function GET() {
   try {
-    // Get Firestore admin instance
-    const db = getAdminFirestore();
-    
-    // Fetch all admin users using proper async/await
-    const adminUsersSnap = await db
-      .collection("users")
-      .where("role", "==", "ADMIN")
-      .orderBy("createdAt", "asc")
-      .get();
+    // Get all admin users
+    const allUsers = await getAllUsers();
+    const adminUsers = allUsers.filter(u => u.role === "ADMIN" || u.role === "admin");
 
-    if (adminUsersSnap.empty) {
+    if (adminUsers.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
 
     const stores = [];
-    for (const d of adminUsersSnap.docs) {
-      const u = { id: d.id, ...(d.data() as any) };
-      const prods = await products.listProductsByStore(u.id);
-      const custs = await customers.getCustomersByStore(u.id);
+    for (const u of adminUsers) {
+      const prods = await getProductsByStore(u.id).catch(() => []);
+      const custs = await getCustomersByStore(u.id).catch(() => []);
       stores.push({
         id: u.id,
         name: u.name,
@@ -40,9 +34,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: stores });
   } catch (error) {
     console.error("[STORES GET]", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    // Return empty array instead of 500 error
+    return NextResponse.json({ success: true, data: [] });
   }
 }

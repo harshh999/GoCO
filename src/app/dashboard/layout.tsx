@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import { storeSettings } from "@/lib/firestore";
+import { getStoreSettings } from "@/lib/database/storeSettings";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export default async function DashboardLayout({
@@ -12,7 +12,7 @@ export default async function DashboardLayout({
   const session = await getSession();
   if (!session) redirect("/admin/login");
 
-  const settings = await storeSettings.getStoreSettings();
+  const settings = await getStoreSettings(session.storeId ?? undefined);
 
   return (
     <ToastProvider>

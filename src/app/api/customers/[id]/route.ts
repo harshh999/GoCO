@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { customers } from "@/lib/firestore";
+import * as customersModule from "@/lib/database/customers";
 import { getTokenFromRequest } from "@/lib/auth";
 
 interface Params {
@@ -17,7 +17,13 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
 
     const { id } = await params;
-    const customer = await customers.getCustomer(id)
+    const storeId = user.role === "ADMIN" ? user.id : undefined;
+    
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: "Store ID required" }, { status: 400 });
+    }
+    
+    const customer = await customersModule.getCustomer(storeId, id)
     if (!customer) {
       return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
     }
@@ -40,12 +46,13 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = await req.json();
     const { name, phone, email, businessName, address, city, notes, totalPurchases, lastPurchaseDate } = body;
 
-    const existing = await customers.getCustomer(id);
-    if (!existing) {
-      return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
+    const storeId = user.role === "ADMIN" ? user.id : undefined;
+    
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: "Store ID required" }, { status: 400 });
     }
 
-    const updated = await customers.updateCustomer(id, {
+    await customersModule.updateCustomer(storeId, id, {
       ...(name !== undefined && { name }),
       ...(phone !== undefined && { phone }),
       ...(email !== undefined && { email }),
@@ -54,9 +61,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
       ...(city !== undefined && { city }),
       ...(notes !== undefined && { notes }),
       ...(totalPurchases !== undefined && { totalPurchases: parseFloat(totalPurchases) }),
-      ...(lastPurchaseDate !== undefined && { lastPurchaseDate: lastPurchaseDate ? new Date(lastPurchaseDate) : null }),
     });
 
+    const updated = await customersModule.getCustomer(storeId, id);
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error("[CUSTOMER PUT]", error);
@@ -73,12 +80,13 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     }
 
     const { id } = await params;
-    const existing = await customers.getCustomer(id);
-    if (!existing) {
-      return NextResponse.json({ success: false, error: "Customer not found" }, { status: 404 });
+    const storeId = user.role === "ADMIN" ? user.id : undefined;
+    
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: "Store ID required" }, { status: 400 });
     }
 
-    await customers.deleteCustomer(id);
+    await customersModule.deleteCustomer(storeId, id);
     return NextResponse.json({ success: true, message: "Customer deleted" });
   } catch (error) {
     console.error("[CUSTOMER DELETE]", error);

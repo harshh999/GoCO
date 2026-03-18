@@ -8,44 +8,45 @@ interface ProductGridProps {
   storeId?: string;
 }
 
+// Empty state icon
+const EmptyIcon = () => (
+  <svg className="w-16 h-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+);
+
 export default function ProductGrid({
   products,
-  currencySymbol = "$",
+  currencySymbol = "₹",
   emptyMessage = "No products found.",
   storeId,
 }: ProductGridProps) {
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-          <svg
-            className="w-8 h-8 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-            />
-          </svg>
+        <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+          <EmptyIcon />
         </div>
-        <p className="text-gray-500 text-sm">{emptyMessage}</p>
+        <p className="text-slate-600 text-base font-semibold mb-2">{emptyMessage}</p>
+        <p className="text-slate-400 text-sm">Try adjusting your filters or check back later.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-      {products.map((product) => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          currencySymbol={currencySymbol}
-          storeId={storeId}
-        />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+      {products.map((product, index) => (
+        <div 
+          key={product.id} 
+          className="animate-in fade-in slide-in-from-bottom-4 duration-300"
+          style={{ animationDelay: `${index * 50}ms` }}
+        >
+          <ProductCard
+            product={product}
+            currencySymbol={currencySymbol}
+            storeId={storeId}
+          />
+        </div>
       ))}
     </div>
   );

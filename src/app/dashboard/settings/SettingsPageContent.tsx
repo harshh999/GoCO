@@ -9,8 +9,8 @@ import { StoreSettings } from "@/types";
 const defaultSettings: Partial<StoreSettings> = {
   storeName: "",
   storeTagline: "",
-  currency: "USD",
-  currencySymbol: "$",
+  currency: "INR",
+  currencySymbol: "₹",
   primaryColor: "#000000",
   accentColor: "#6366f1",
 };
@@ -95,14 +95,14 @@ export default function SettingsPageContent() {
               label="Currency Code"
               value={settings.currency ?? ""}
               onChange={(e) => setSettings((s) => ({ ...s, currency: e.target.value }))}
-              placeholder="USD"
+              placeholder="INR"
               hint="e.g. USD, EUR, GBP"
             />
             <Input
               label="Currency Symbol"
               value={settings.currencySymbol ?? ""}
               onChange={(e) => setSettings((s) => ({ ...s, currencySymbol: e.target.value }))}
-              placeholder="$"
+              placeholder="₹"
               hint="e.g. $, €, £"
             />
           </div>

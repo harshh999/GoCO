@@ -83,4 +83,18 @@ body {
   .badge-blue {
     @apply badge bg-blue-50 text-blue-700;
   }
+  /* Glass Button Styles */
+  .glass-button {
+    @apply relative overflow-hidden;
+  }
+  .glass-button::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-0 transition-opacity duration-300;
+  }
+  .glass-button:hover::before {
+    @apply opacity-100;
+  }
+  .glass-button-shadow {
+    @apply shadow-lg shadow-violet-600/20;
+  }
 }

@@ -18,6 +18,20 @@ interface Props {
   storeId: string;
 }
 
+// Back arrow icon
+const BackIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+// Arrow right icon
+const ArrowIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+  </svg>
+);
+
 export default function StoreCatalogContent({ storeId }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -60,66 +74,80 @@ export default function StoreCatalogContent({ storeId }: Props) {
 
   const isFiltering = !!(search || selectedCategory);
   const storeName = store?.storeName ?? "Store";
-  const currencySymbol = "₹";
+  const currencySymbol = "Rs";
 
   return (
     <>
       <LeadCaptureModal storeId={storeId} storeName={storeName} delayMs={30000} />
 
       <div>
-        {/* ── Hero ── */}
+        {/* -- Hero -- */}
         {!isFiltering && (
-          <div className="relative overflow-hidden bg-gray-950">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_50%,_#312e81_0%,_transparent_65%)] opacity-70" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_10%_80%,_#4f46e5_0%,_transparent_55%)] opacity-40" />
-            <div className="absolute inset-0 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Cpath d=%22M60 0H0v60%22 fill=%22none%22 stroke=%22white%22 stroke-opacity=%220.04%22 stroke-width=%221%22/%3E%3C/svg%3E')]" />
+          <div className="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_50%,_#1e293b_0%,_transparent_65%)]" />
+            <div className="absolute inset-0 opacity-30" />
 
-            <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
+            <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
               {/* Back link */}
               <Link
                 href="/catalog"
-                className="inline-flex items-center gap-1.5 text-white/50 hover:text-white/80 text-xs font-medium mb-8 transition-colors"
+                className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-xs font-semibold mb-8 transition-colors hover:gap-3"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+                <BackIcon />
                 All Stores
               </Link>
 
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-white/70 text-xs font-medium mb-6 backdrop-blur-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {store?.storeType ?? "Store"} · Digital Catalog
+              <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-slate-300 text-xs font-semibold mb-6 backdrop-blur-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                {store?.storeType ?? "Store"} - Digital Catalog
               </div>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight tracking-tight mb-5">
+              <h1 className="text-5xl font-semibold tracking-tight text-white leading-tight mb-5">
                 {storeName}
                 <br />
-                <span className="text-white/40">Catalog.</span>
+                <span className="text-slate-400">Catalog.</span>
               </h1>
 
               {store?.storeDesc && (
-                <p className="text-white/50 text-base sm:text-lg max-w-lg">
+                <p className="text-slate-400 text-xl max-w-lg leading-relaxed">
                   {store.storeDesc}
                 </p>
               )}
 
               {!loading && (
-                <div className="flex flex-wrap items-center gap-6 mt-10">
-                  <div>
-                    <p className="text-2xl font-bold text-white">{products.length}</p>
-                    <p className="text-xs text-white/40 mt-0.5">Products</p>
+                <div className="flex flex-wrap items-center gap-8 mt-12">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <span className="text-xl font-bold text-white">{products.length}</span>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{products.length}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Products</p>
+                    </div>
                   </div>
-                  <div className="w-px h-8 bg-white/10" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">{categories.length}</p>
-                    <p className="text-xs text-white/40 mt-0.5">Categories</p>
+
+                  <div className="w-px h-10 bg-white/10" />
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <span className="text-xl font-bold text-white">{categories.length}</span>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{categories.length}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Categories</p>
+                    </div>
                   </div>
-                  <div className="w-px h-8 bg-white/10" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">
-                      {products.filter((p) => p.inStock).length}
-                    </p>
-                    <p className="text-xs text-white/40 mt-0.5">In Stock</p>
+
+                  <div className="w-px h-10 bg-white/10" />
+
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <span className="text-xl font-bold text-emerald-400">{products.filter((p) => p.inStock).length}</span>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{products.filter((p) => p.inStock).length}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">In Stock</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -127,44 +155,51 @@ export default function StoreCatalogContent({ storeId }: Props) {
           </div>
         )}
 
-        {/* ── Products ── */}
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10">
-          <CatalogFilterBar
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryChange={setSelectedCategory}
-            searchQuery={search}
-            onSearchChange={setSearch}
-            totalCount={products.length}
-          />
+        {/* -- Products -- */}
+        <div className="bg-gradient-to-b from-white via-slate-50/50 to-white min-h-screen">
+          <div className="max-w-7xl mx-auto px-6 py-10">
 
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5 mt-8">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="rounded-2xl overflow-hidden bg-gray-50">
-                  <div className="aspect-[4/5] bg-gray-100 animate-pulse" />
-                  <div className="p-4 space-y-2.5">
-                    <div className="h-2.5 bg-gray-100 rounded-full animate-pulse w-1/3" />
-                    <div className="h-3.5 bg-gray-100 rounded-full animate-pulse" />
-                    <div className="h-3.5 bg-gray-100 rounded-full animate-pulse w-2/3" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="animate-fade-in mt-8">
-              <ProductGrid
-                products={products}
-                currencySymbol={currencySymbol}
-                storeId={storeId}
-                emptyMessage={
-                  isFiltering
-                    ? "No products match your search."
-                    : "No products in this store yet."
-                }
+            {/* Filter bar with enhanced styling */}
+            <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm shadow-slate-200/30 mb-8">
+              <CatalogFilterBar
+                categories={categories}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                searchQuery={search}
+                onSearchChange={setSearch}
+                totalCount={products.length}
               />
             </div>
-          )}
+
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="rounded-2xl overflow-hidden bg-white border border-slate-100">
+                    <div className="aspect-[4/5] bg-slate-100 animate-pulse" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-2 bg-slate-100 rounded-full w-1/3 animate-pulse" />
+                      <div className="h-4 bg-slate-100 rounded-full animate-pulse" />
+                      <div className="h-3 bg-slate-100 rounded-full w-2/3 animate-pulse" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="animate-in fade-in duration-300">
+                <ProductGrid
+                  products={products}
+                  currencySymbol={currencySymbol}
+                  storeId={storeId}
+                  emptyMessage={
+                    isFiltering
+                      ? "No products match your search criteria."
+                      : "No products in this store yet."
+                  }
+                />
+              </div>
+            )}
+
+          </div>
         </div>
       </div>
     </>

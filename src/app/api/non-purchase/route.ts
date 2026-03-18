@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { leads } from "@/lib/firestore";
+import * as leadsModule from "@/lib/database/leads";
 
 // POST /api/non-purchase - submit a non-purchase lead (public)
 export async function POST(req: NextRequest) {
@@ -16,15 +16,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const lead = await leads.createLead({
+    if (!storeId) {
+      return NextResponse.json(
+        { success: false, error: "Store ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const leadId = await leadsModule.createLead(storeId, {
       name,
       phone,
       reason: reason ?? null,
       message: message ?? null,
-      storeId: storeId ?? null,
     });
 
-    return NextResponse.json({ success: true, data: lead }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id: leadId, storeId } }, { status: 201 });
   } catch (error) {
     console.error("[NON-PURCHASE POST]", error);
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });

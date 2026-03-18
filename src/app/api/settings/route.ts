@@ -1,21 +1,21 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { storeSettings } from "@/lib/firestore";
+import * as storeSettingsModule from "@/lib/database/storeSettings";
 import { getTokenFromRequest } from "@/lib/auth";
 
 export async function GET() {
   try {
-    let settings = await storeSettings.getStoreSettings();
+    let settings = await storeSettingsModule.getStoreSettings();
     if (!settings) {
-      await storeSettings.updateStoreSettings({
+      await storeSettingsModule.createStoreSettings(undefined, {
         storeName: "GoRetail Store",
         currency: "USD",
         currencySymbol: "$",
         primaryColor: "#000000",
         accentColor: "#6366f1",
       });
-      settings = await storeSettings.getStoreSettings();
+      settings = await storeSettingsModule.getStoreSettings();
     }
     return NextResponse.json({ success: true, data: settings });
   } catch (error) {
@@ -32,9 +32,9 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const existing = await storeSettings.getStoreSettings();
-    await storeSettings.updateStoreSettings(body);
-    const updated = await storeSettings.getStoreSettings();
+    const storeId = user.role === "ADMIN" ? user.id : undefined;
+    await storeSettingsModule.updateStoreSettings(storeId, body);
+    const updated = await storeSettingsModule.getStoreSettings(storeId);
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error("[SETTINGS PUT]", error);

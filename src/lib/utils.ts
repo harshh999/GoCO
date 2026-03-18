@@ -9,11 +9,10 @@ export function slugify(text: string): string {
 
 export function formatPrice(
   amount: number,
-  symbol: string = "$",
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _currency: string = "USD"
+  symbol: string = "₹",
+  _currency: string = "INR"
 ): string {
-  return `${symbol}${amount.toLocaleString("en-US", {
+  return `${symbol}${amount.toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -24,15 +23,13 @@ export function cn(...classes: (string | undefined | null | false)[]): string {
 }
 
 export function getPrimaryImage(
-  images: Array<{ url: string; isPrimary: boolean; order: number }>
+  images: Array<{ url?: string; isPrimary?: boolean; order?: number }>
 ): string {
   if (!images || images.length === 0) return "/placeholder-product.svg";
   const primary = images.find((i) => i.isPrimary);
-  if (primary) return primary.url;
-  return (
-    images.sort((a, b) => a.order - b.order)[0]?.url ??
-    "/placeholder-product.svg"
-  );
+  if (primary?.url) return primary.url;
+  const sorted = images.filter(i => i.url).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return sorted[0]?.url ?? "/placeholder-product.svg";
 }
 
 export function truncate(str: string, maxLength: number): string {

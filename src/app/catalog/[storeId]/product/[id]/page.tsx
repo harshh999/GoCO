@@ -5,41 +5,55 @@ import ImageGallery from "@/components/catalog/ImageGallery";
 import { formatPrice } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 import NonPurchaseLeadForm from "@/components/catalog/NonPurchaseLeadForm";
-import { products, users } from "@/lib/firestore";
+import { getProductBySlug, getProductsByStore } from "@/lib/database/products";
+import { getStore } from "@/lib/database/stores";
+import { getStoreSettings } from "@/lib/database/storeSettings";
+import { getCategoriesByStore } from "@/lib/database/categories";
 
 interface Props {
   params: Promise<{ storeId: string; id: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-  let product = await products.getProduct(id).catch(() => null)
-  if (!product) {
-    const db = (await import("@/lib/firestoreAdmin")).then(m => m.getAdminFirestore())
-    const q = await (await db).collection('products').where('slug','==', id).limit(1).get()
-    if (!q.empty) product = await products.getProduct(q.docs[0].id)
-  }
+  const { storeId, id } = await params;
+  
+  const product = await getProductBySlug(storeId, id);
   if (!product) return { title: "Product Not Found" };
+  
   return { title: product.name, description: product.description ?? undefined };
 }
 
 export default async function StoreProductPage({ params }: Props) {
   const { storeId, id } = await params;
-  const product = await products.getProduct(id)
-  const store = await users.getUserById(storeId)
-  if (!product || !store || store.role !== 'ADMIN') notFound();
+  
+  // Get product by slug for this store
+  const product = await getProductBySlug(storeId, id);
+  
+  // Get store info
+  const store = await getStore(storeId);
+  
+  if (!product || !store) notFound();
 
-  const currencySymbol = "₹";
+  // Get store settings
+  const settings = await getStoreSettings(storeId);
+  const currencySymbol = settings?.currencySymbol ?? "₹";
+
   const hasDiscount = product.comparePrice && product.comparePrice > product.price;
   const discountPercent = hasDiscount
     ? Math.round((1 - product.price / product.comparePrice!) * 100)
     : null;
 
+  // Get categories for this store to find the category name
+  const categories = await getCategoriesByStore(storeId);
+  const category = categories.find(c => c.id === product.categoryId);
+
+  // Get related products (same category)
+  const storeProducts = await getProductsByStore(storeId);
   const related = product.categoryId
-    ? (await products.getProductsByCategory(product.categoryId)).filter(p => p.id !== product.id && p.storeId === storeId).slice(0,4)
+    ? storeProducts.filter(p => p.categoryId === product.categoryId && p.id !== product.id).slice(0, 4)
     : [];
 
-  const storeName = store.storeName ?? "Store";
+  const storeName = store.name ?? "Store";
 
   return (
     <div className="max-w-7xl mx-auto px-5 sm:px-8 py-8 sm:py-12 animate-fade-in">
@@ -52,10 +66,10 @@ export default async function StoreProductPage({ params }: Props) {
         <Link href={`/catalog/${storeId}`} className="hover:text-gray-700 transition-colors font-medium">
           {storeName}
         </Link>
-        {product.category && (
+        {category && (
           <>
             <span className="text-gray-300">/</span>
-            <span className="text-gray-400">{product.category.name}</span>
+            <span className="text-gray-400">{category.name}</span>
           </>
         )}
         <span className="text-gray-300">/</span>
@@ -69,13 +83,12 @@ export default async function StoreProductPage({ params }: Props) {
         {/* Images */}
         <div className="animate-slide-up">
           <ImageGallery
-            images={product.images.map((img) => ({
+            images={(product.images || []).map((img) => ({
               id: img.id,
               url: img.url,
               alt: img.alt ?? undefined,
-              isPrimary: img.isPrimary,
-              order: img.order,
-              productId: img.productId,
+              isPrimary: img.isPrimary ?? false,
+              order: img.order ?? 0,
             }))}
             productName={product.name}
           />
@@ -83,9 +96,9 @@ export default async function StoreProductPage({ params }: Props) {
 
         {/* Product info */}
         <div className="flex flex-col gap-5 animate-slide-up">
-          {product.category && (
+          {category && (
             <span className="text-[11px] font-bold text-gray-400 uppercase tracking-[0.12em]">
-              {product.category.name}
+              {category.name}
             </span>
           )}
 
@@ -157,11 +170,12 @@ export default async function StoreProductPage({ params }: Props) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
             {related.map((rel) => {
-              const img = rel.images.find((i) => i.isPrimary) ?? rel.images[0];
+              const relImages = rel.images || [];
+              const img = relImages.find((i) => i.isPrimary) ?? relImages[0];
               return (
                 <Link
                   key={rel.id}
-                  href={`/catalog/${storeId}/product/${rel.slug}`}
+                  href={`/catalog/${storeId}/product/${rel.id}`}
                   className="group block"
                 >
                   <div className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.14)]">
